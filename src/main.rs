@@ -15,7 +15,7 @@ fn main() {
     loop {
         match scheduler::wait_until_next_run() {
             Ok(_) => {
-                let the_message = ratio_fetcher::fetch_longshort_ratio();
+                let the_message = ratio_fetcher::ratio_fetcher();
                 println!("Message: {}", the_message);
                 info!("Generated message: {}", the_message);
                 if !the_message.is_empty() {

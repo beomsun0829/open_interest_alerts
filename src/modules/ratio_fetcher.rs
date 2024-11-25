@@ -58,38 +58,6 @@ fn calculate_change(current: f64, previous: &Mutex<f64>) -> Option<Change> {
     Some(Change { current, diff })
 }
 
-fn fetch_last_funding_entry() -> Result<Option<InterestData>, String> {
-    let url = "https://www.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m";
-    let response = reqwest::blocking::get(url);
-
-    let body = match response {
-        Ok(resp) => match resp.text() {
-            Ok(text) => {
-                debug!("funding_response.text: {}", text);
-                text
-            }
-            Err(e) => {
-                error!("Error reading response text: {}", e);
-                return Err(format!("Error reading response text: {}", e));
-            }
-        },
-        Err(e) => {
-            error!("Error fetching funding history: {}", e);
-            return Err(format!("Error fetching funding history: {}", e));
-        }
-    };
-
-    let funding_history: Vec<InterestData> = match serde_json::from_str(&body) {
-        Ok(json_data) => json_data,
-        Err(e) => {
-            error!("Error parsing funding history JSON: {}", e);
-            return Err(format!("Error parsing funding history JSON: {}", e));
-        }
-    };
-
-    Ok(funding_history.into_iter().max_by_key(|entry: &InterestData| entry.timestamp))
-}
-
 fn fetch_data<T>(url: &str) -> Result<Vec<T>, String>
 where T: DeserializeOwned + std::fmt::Debug,
 {
@@ -120,6 +88,12 @@ where T: DeserializeOwned + std::fmt::Debug,
         }
     };
     Ok(data)
+}
+
+fn get_last_data<T, F>(data: &[T], key_fn: F) -> Option<&T>
+where F: Fn(&T) -> i64,
+{
+    data.iter().max_by_key(|entry| key_fn(entry))
 }
 
 fn funding_history_output(last_funding_history: InterestData) -> String {
@@ -182,65 +156,11 @@ fn funding_history_output(last_funding_history: InterestData) -> String {
     format_text
 }
 
-
-pub fn fetch_longshort_ratio() -> String {
-    info!("Calculating longshort_ratio_func");
-
+pub fn ratio_fetcher() -> String {
     let mut output_text = String::new();
-
-    let last_funding_history = match fetch_last_funding_entry() {
-        Ok(Some(data)) => data,
-        Ok(None) => {
-            error!("No funding history data available.");
-            return String::new();
-        }
-        Err(e) => {
-            error!("Error fetching last funding entry: {}", e);
-            return String::new();
-        }
-    };
-    
-    output_text.push_str(&funding_history_output(last_funding_history));
-
-
-
-    /*
     
 
-    // 가장 최근 데이터 가져오기
-    if let Some(latest_ratio) = longshort_data.last() {
-        let long_account: f64 = latest_ratio.long_account.parse().unwrap_or(0.0) * 100.0;
-        let long_account = (long_account * 100.0).round() / 100.0;
 
-        let short_account: f64 = latest_ratio.short_account.parse().unwrap_or(0.0) * 100.0;
-        let short_account = (short_account * 100.0).round() / 100.0;
-
-        // 이전 롱 계정 값과 비교하여 변화량 계산
-        let mut long_history = LONG_HISTORY_BEFORE_BTC.lock().unwrap();
-        let long_diff = long_account - *long_history;
-        if *long_history == 0.0 {
-            output_text_return += &format!("Long Account : {:.2}% ( - )\n", long_account);
-        } else {
-            output_text_return +=
-                &format!("Long Account : {:.2}% ({:+.2})\n", long_account, long_diff);
-        }
-        *long_history = long_account;
-
-        // 이전 숏 계정 값과 비교하여 변화량 계산
-        let mut short_history = SHORT_HISTORY_BEFORE_BTC.lock().unwrap();
-        let short_diff = short_account - *short_history;
-        if *short_history == 0.0 {
-            output_text_return += &format!("Short Account : {:.2}% ( - )", short_account);
-        } else {
-            output_text_return +=
-                &format!("Short Account : {:.2}% ({:+.2})", short_account, short_diff);
-        }
-        *short_history = short_account;
-    } else {
-        error!("No long-short ratio data available.");
-        return String::new();
-    }
-    */
     output_text
 }
 
@@ -262,6 +182,16 @@ mod tests {
     }
 
     #[test]
+    fn test_get_last_data(){
+        logger::init_logger(true);
+        let url = "https://www.binance.com/futures/data/openInterestHist?symbol=BTCUSDT&period=5m";
+        let tester = fetch_data::<InterestData>(url).expect("Failed to fetch data");
+        let key_fn = |entry: &InterestData| entry.timestamp;
+        let res = get_last_data(&tester, key_fn);
+        println!("Get Last Data Test Result: {:?}", res);
+    }
+
+    #[test]
     fn text_funding_history_output(){
         logger::init_logger(true);
         let tester = InterestData {
@@ -275,9 +205,9 @@ mod tests {
     }
     
     #[test]
-    fn test_fetch_longshort_ratio() {
+    fn test_ratio_fetcher() {
         logger::init_logger(true);
-        let res = fetch_longshort_ratio();
-        println!("Test Result: {}", res);
+        let res = ratio_fetcher();
+        println!("Test Result: {:?}", res);
     }
 }
