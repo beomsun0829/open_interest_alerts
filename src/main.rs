@@ -8,7 +8,7 @@ use modules::telegram_utils;
 use log::{info, error};
 
 fn main() {
-    const USE_TELEGRAM: bool = false;
+    const USE_TELEGRAM: bool = true;
 
     logger::init_logger(false);
     info!("Main loop started");
