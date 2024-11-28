@@ -8,22 +8,22 @@ use modules::telegram_utils;
 use log::{info, error};
 
 fn main() {
+    const USE_TELEGRAM: bool = false;
+
     logger::init_logger(false);
-    println!("Start");
     info!("Main loop started");
+    info!("USE_TELEGRAM: {}", USE_TELEGRAM);
 
     loop {
         match scheduler::wait_until_next_run() {
             Ok(_) => {
                 let the_message = ratio_fetcher::ratio_fetcher();
-                println!("Message: {}", the_message);
                 info!("Generated message: {}", the_message);
-                if !the_message.is_empty() {
+                if USE_TELEGRAM && !the_message.is_empty(){
                     telegram_utils::send_telegram_message(&the_message);
                 }
             }
             Err(e) => {
-                println!("Error in main loop: {}", e);
                 error!("Error in main loop: {}", e);
             }
         }

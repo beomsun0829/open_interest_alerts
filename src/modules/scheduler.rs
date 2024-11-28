@@ -23,16 +23,12 @@ pub fn wait_until_next_run() -> Result<(), Box<dyn std::error::Error>> {
             continue;
         }
 
-        println!(
-            "Waiting {} seconds until next run at {}",
-            wait_seconds,
-            next_run.format("%Y-%m-%d %H:%M:%S")
-        );
         info!(
             "Waiting {} seconds until next run at {}",
             wait_seconds,
             next_run.format("%Y-%m-%d %H:%M:%S")
         );
+        
         sleep(Duration::from_secs(wait_seconds as u64));
         break;
     }
